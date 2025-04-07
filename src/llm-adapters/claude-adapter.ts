@@ -119,22 +119,40 @@ export class ClaudeAdapter implements LLMAdapter {
             formattedMessages.push({ role: 'user', content: '(Start of conversation)' });
         }
 
-        for (const msg of messages) {
+        // Use an index-based loop instead of for-of to control iteration
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
             // --- 1. Determine MessageParam based on input message and push directly ---
             if (msg.role === 'user') {
                  formattedMessages.push({ // Push directly
                      role: 'user',
                      content: msg.content ?? ""
                  });
-            } else if (msg.role === 'assistant') {
+            } else if (msg.role === 'assistant_thinking') {
+                // Look ahead to see if the next message is an assistant message
+                const nextMsg = i < messages.length - 1 ? messages[i + 1] : null;
+                
+                if (nextMsg && nextMsg.role === 'assistant') {
+                    // Combine assistant_thinking with the next assistant message
+                    formattedMessages.push({
+                        role: 'assistant',
+                        content: (msg.content ? `<thinking>${msg.content}</thinking>` : "") + 
+                                  (nextMsg.content ?? "")
+                    });
+                    
+                    // Skip the next message by advancing the loop counter
+                    i++;
+                } else {
+                    // No assistant message follows, push thinking message normally
+                    formattedMessages.push({
+                        role: 'assistant',
+                        content: msg.content ? `<thinking>${msg.content}</thinking>` : ""
+                    });
+                }
+           } else if (msg.role === 'assistant') {
                  formattedMessages.push({ // Push directly
                      role: 'assistant',
                      content: msg.content ?? ""
-                 });
-            } else if (msg.role === 'assistant_thinking') {
-                 formattedMessages.push({ // Push directly
-                     role: 'assistant',
-                     content: msg.content ? `<thinking>${msg.content}</thinking>` : ""
                  });
             } else if (msg.role === 'tool_use') {
                  if (msg.tool_calls && msg.tool_calls.length > 0) {
