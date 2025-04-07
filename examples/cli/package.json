@@ -1,7 +1,7 @@
 {
-  "name": "@orrin-ai/database-adapter-in-memory",
+  "name": "cli-example",
   "version": "0.1.0",
-  "description": "In-memory database adapter for MCP agent",
+  "description": "CLI example for MCP agent",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "start": "npm run build && node dist/run.js"
   },
   "keywords": [
     "ai",
