@@ -1,6 +1,6 @@
-import { InMemoryDatabaseAdapter } from "../../../../../src/database-adapters/in-memory-database-adapter";
-import { ClaudeAdapter } from "../../../../../src/llm-adapters/claude-adapter";
-import { NextOrrinAiOptions } from "../../../../../src/hosts/nextjs-host";
+import { InMemoryDatabaseAdapter } from "@orrin-ai/client";
+import { ClaudeAdapter } from "@orrin-ai/client";
+import { NextOrrinAiOptions } from "@orrin-ai/client";
 
 const dbAdapter = new InMemoryDatabaseAdapter();
 
