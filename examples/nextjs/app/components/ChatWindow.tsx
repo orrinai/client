@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef, FormEvent } from 'react';
-import type { LLMCompletionChunk, Message } from '@orrin-ai/client';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   isStreaming?: boolean;
+  isThinking?: boolean;
+  toolLogs?: string[];
 }
 
 interface ChatWindowProps {
@@ -38,7 +39,13 @@ export default function ChatWindow({ sessionId }: ChatWindowProps) {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     
     // Prepare a placeholder for assistant response
-    setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
+    setMessages(prev => [...prev, { 
+      role: 'assistant', 
+      content: '', 
+      isStreaming: true,
+      isThinking: false,
+      toolLogs: []
+    }]);
     
     setIsLoading(true);
     setError(null);
@@ -66,89 +73,195 @@ export default function ChatWindow({ sessionId }: ChatWindowProps) {
         throw new Error('Response body is null');
       }
       
+      // Use a ReadableStream directly for SSE processing
       const reader = response.body.getReader();
+      let buffer = '';
       let assistantMessage = '';
       let toolLogs: string[] = [];
+      const toolIdToNameMap: Map<string, string> = new Map();
+      // Track tool_use_delta events to build tool call contents
+      const toolCallContents: Map<string, string> = new Map();
       
+      // Process the stream
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        // Convert the chunk to a string
-        const chunk = new TextDecoder().decode(value);
+        // Decode the chunk and add to buffer
+        buffer += new TextDecoder().decode(value);
         
-        // Parse the chunk (which should be a JSON object)
-        try {
-          const events = chunk
-            .split('\n\n')
-            .filter(line => line.trim().startsWith('data: '))
-            .map(line => JSON.parse(line.replace('data: ', '')));
+        // Process complete events in buffer
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || ''; // Keep the last incomplete event in buffer
+        
+        for (const event of events) {
+          if (!event.trim()) continue; // Skip empty events
           
-          for (const event of events) {
-            if (event.type === 'text_start') {
-              setThinking(false);
-            } else if (event.type === 'text_delta') {
-              assistantMessage += event.delta;
-              // Update the streaming message
-              setMessages(prev => {
-                const newMessages = [...prev];
-                const lastMsg = newMessages[newMessages.length - 1];
-                if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-                  lastMsg.content = assistantMessage;
+          const eventLines = event.split('\n');
+          const eventTypeLine = eventLines.find(line => line.startsWith('event:'));
+          const eventDataLine = eventLines.find(line => line.startsWith('data:'));
+          
+          if (!eventTypeLine || !eventDataLine) continue;
+          
+          const eventType = eventTypeLine.replace('event:', '').trim();
+          const eventData = eventDataLine.replace('data:', '').trim();
+          
+          try {
+            const data = eventData ? JSON.parse(eventData) : {};
+            
+            switch (eventType) {
+              case 'stream_start':
+                console.log('Stream started');
+                break;
+                
+              case 'thinking_start':
+                setThinking(true);
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMsg = newMessages[newMessages.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.isThinking = true;
+                  }
+                  return newMessages;
+                });
+                break;
+                
+              case 'thinking_delta':
+                // Just update thinking state - no need to show thinking content
+                break;
+                
+              case 'thinking_end':
+                setThinking(false);
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMsg = newMessages[newMessages.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.isThinking = false;
+                  }
+                  return newMessages;
+                });
+                break;
+                
+              case 'text_start':
+                setThinking(false);
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMsg = newMessages[newMessages.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.isThinking = false;
+                  }
+                  return newMessages;
+                });
+                break;
+                
+              case 'text_delta':
+                if (data.delta) {
+                  assistantMessage += data.delta;
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMsg = newMessages[newMessages.length - 1];
+                    if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                      lastMsg.content = assistantMessage;
+                      lastMsg.isThinking = false;
+                    }
+                    return newMessages;
+                  });
                 }
-                return newMessages;
-              });
-            } else if (event.type === 'thinking_start') {
-              setThinking(true);
-            } else if (event.type === 'tool_use_start') {
-              toolLogs.push(`Calling tool: "${event.name}"...`);
-              // Update messages to show tool usage
-              setMessages(prev => {
-                const newMessages = [...prev];
-                const lastMsg = newMessages[newMessages.length - 1];
-                if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-                  lastMsg.content = assistantMessage + 
-                    (assistantMessage ? '\n\n' : '') + 
-                    toolLogs.join('\n');
+                break;
+                
+              case 'text_end':
+                // Text has ended, update message to final state
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMsg = newMessages[newMessages.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.isThinking = false;
+                  }
+                  return newMessages;
+                });
+                break;
+                
+              case 'tool_use_start':
+                toolIdToNameMap.set(data.id, data.name);
+                toolCallContents.set(data.id, ''); // Initialize empty content for this tool call
+                const toolLog = `Calling tool: "${data.name}"...`;
+                toolLogs.push(toolLog);
+                
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMsg = newMessages[newMessages.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.toolLogs = [...toolLogs];
+                    lastMsg.isThinking = false;
+                  }
+                  return newMessages;
+                });
+                break;
+                
+              case 'tool_use_delta':
+                // Accumulate the tool call content
+                if (data.id && data.delta !== undefined) {
+                  const currentContent = toolCallContents.get(data.id) || '';
+                  toolCallContents.set(data.id, currentContent + data.delta);
                 }
-                return newMessages;
-              });
-            } else if (event.type === 'tool_result') {
-              if (event.is_error) {
-                toolLogs.push(`Tool call failed`);
-              } else {
-                toolLogs.push(`Tool call completed`);
-              }
-              
-              // Update messages to show tool result
-              setMessages(prev => {
-                const newMessages = [...prev];
-                const lastMsg = newMessages[newMessages.length - 1];
-                if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-                  lastMsg.content = assistantMessage + 
-                    (assistantMessage ? '\n\n' : '') + 
-                    toolLogs.join('\n');
+                break;
+                
+              case 'tool_use_end':
+                // Tool call is finished, update UI
+                if (data.id) {
+                  const toolName = toolIdToNameMap.get(data.id) || data.id;
+                  const toolContent = toolCallContents.get(data.id) || '';
+                  console.log(`Tool call "${toolName}" completed with params:`, toolContent);
                 }
-                return newMessages;
-              });
-            } else if (event.type === 'error') {
-              setError('An error occurred while generating the response');
+                break;
+                
+              case 'tool_result':
+                if (data.tool_results && Array.isArray(data.tool_results)) {
+                  for (const result of data.tool_results) {
+                    const toolName = toolIdToNameMap.get(result.tool_call_id) || result.tool_call_id;
+                    const status = result.is_error ? 'failed' : 'completed';
+                    const resultLog = `Tool call "${toolName}" ${status}`;
+                    toolLogs.push(resultLog);
+                  }
+                  
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMsg = newMessages[newMessages.length - 1];
+                    if (lastMsg.role === 'assistant') {
+                      lastMsg.toolLogs = [...toolLogs];
+                      lastMsg.isThinking = false;
+                    }
+                    return newMessages;
+                  });
+                }
+                break;
+                
+              case 'stream_end':
+                // Note: We don't complete the message here as there might be tool_result events coming
+                console.log('Stream ended, but continuing to listen for tool results');
+                break;
+                
+              case 'error':
+                setError('An error occurred while generating the response');
+                break;
             }
+          } catch (err) {
+            console.error('Error processing event:', eventType, eventData, err);
           }
-        } catch (err) {
-          console.error('Error parsing chunk:', err);
         }
       }
       
-      // Complete the streaming once done
+      // Complete the streaming once reader is done
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMsg = newMessages[newMessages.length - 1];
         if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
           lastMsg.isStreaming = false;
+          lastMsg.isThinking = false;
         }
         return newMessages;
       });
+      
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         console.log('Request was aborted');
@@ -192,18 +305,27 @@ export default function ChatWindow({ sessionId }: ChatWindowProps) {
                       : 'bg-gray-200 text-gray-800 rounded-bl-none'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                  
+                  {msg.toolLogs && msg.toolLogs.length > 0 && (
+                    <div className="mt-2 text-xs border-t border-gray-300 pt-2">
+                      {msg.toolLogs.map((log, logIdx) => (
+                        <div key={logIdx} className="py-1">{log}</div>
+                      ))}
+                    </div>
+                  )}
+                  
                   {msg.isStreaming && (
-                    <div className="h-5 flex items-center">
-                      {thinking ? (
+                    <div className="h-5 flex items-center mt-1">
+                      {msg.isThinking ? (
                         <div className="text-xs italic">Thinking...</div>
-                      ) : (
+                      ) : msg.content === '' && (!msg.toolLogs || msg.toolLogs.length === 0) ? (
                         <div className="typing-indicator">
                           <span></span>
                           <span></span>
                           <span></span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
