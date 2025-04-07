@@ -1,4 +1,4 @@
-import type { DatabaseAdapter, Message, LLMToolCallRequest, LLMToolResult, BaseMessage, ToolResultMessage } from "@orrin-ai/mcp-agent";
+import type { DatabaseAdapter, Message, LLMToolResult, BaseMessage, ToolResultMessage } from "@orrin-ai/mcp-agent";
 import { logger } from "@orrin-ai/mcp-agent";
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
