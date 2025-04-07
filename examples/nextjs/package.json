@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@orrin-ai/client": "^0.1.0",
+    "@orrin-ai/database-adapter-sqlite": "^0.1.1",
+    "@orrin-ai/llm-adapters-anthropic": "^0.1.2",
+    "@orrin-ai/mcp-agent": "^0.1.3",
+    "@orrin-ai/nextjs": "^0.1.0",
     "next": "15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -1,6 +1,5 @@
-import { OrrinAiClient, OrrinAiClientConfig } from "../../mcp-agent/src/mcp-agent.js";
-import { NextRequest, NextResponse } from "next/server";
-import { logger } from '../../mcp-agent/src/utils/logger.js'; // Import the logger
+import { OrrinAiClient, OrrinAiClientConfig, logger } from "@orrin-ai/mcp-agent";
+import { NextRequest, NextResponse } from "next/server.js";
 
 export function NextOrrinAiOptions(config: OrrinAiClientConfig) {
     const sessionManager = new OrrinAiClient(config);

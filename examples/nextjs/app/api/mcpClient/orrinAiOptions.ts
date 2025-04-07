@@ -1,6 +1,6 @@
-import { SQLiteDatabaseAdapter } from "@orrin-ai/client";
-import { ClaudeAdapter } from "@orrin-ai/client";
-import { NextOrrinAiOptions } from "@orrin-ai/client";
+import { SQLiteDatabaseAdapter } from "@orrin-ai/database-adapter-sqlite";
+import { ClaudeAdapter } from "@orrin-ai/llm-adapters-anthropic";
+import { NextOrrinAiOptions } from "@orrin-ai/nextjs";
 import path from 'path';
 
 // Use SQLite database adapter with a file in the .next/cache directory
