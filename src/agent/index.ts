@@ -9,7 +9,9 @@ import { MessageAccumulator } from '../utils/message-accumulator.js'; // Import 
 interface AgentConfig {
     llmAdapter: LLMAdapter;
     // Changed from mcpRouter to mcpServerUrls
-    mcpServerUrls: string[]; 
+    mcpServerUrls: string[];
+    // Add initialMessages to the config
+    initialMessages?: Message[]; 
 }
 
 /**
@@ -20,6 +22,8 @@ export class Agent {
     private llmAdapter: LLMAdapter;
     private mcpRouter: MCPRouter; // Agent owns the router instance
     private mcpServerUrls: string[]; // Store for potential reference
+    // Add internal message history
+    private currentMessages: Message[] = [];
 
     constructor(config: AgentConfig) {
         if (!config || !config.llmAdapter) {
@@ -27,6 +31,9 @@ export class Agent {
         }
         this.llmAdapter = config.llmAdapter;
         this.mcpServerUrls = config.mcpServerUrls || [];
+        // Initialize internal message history
+        this.currentMessages = config.initialMessages ? [...config.initialMessages] : [];
+        logger.info(`[Agent Constructor] Initialized with ${this.currentMessages.length} messages.`); // Log initial message count
 
         // Create transports from URLs
         const transports: Transport[] = this.mcpServerUrls.map(urlStr => {
@@ -126,8 +133,11 @@ export class Agent {
      * and yields completed Message objects only for tool results (role: 'tool_result').
      * @param initialMessages The starting message history for this run.
      */
-    async *run(initialMessages: Message[]): AsyncGenerator<LLMCompletionChunk | Message, void, undefined> {
-        let currentMessages = [...initialMessages];
+    async *run(newMessage: Message): AsyncGenerator<LLMCompletionChunk | Message, void, undefined> {
+        // Add the new message to the internal history
+        this.currentMessages.push(newMessage);
+        // Let currentMessages refer to the instance variable
+        // let currentMessages = [...initialMessages]; // Remove this line
         let availableTools: LLMTool[] = [];
 
         if (!this.mcpRouter.getIsConnected()) {
@@ -143,7 +153,8 @@ export class Agent {
 
             while (true) {
                 turn++;
-                logger.info(`[Agent Turn ${turn}] Calling LLM adapter stream with ${currentMessages.length} messages...`);
+                // Use the internal message history
+                logger.info(`[Agent Turn ${turn}] Calling LLM adapter stream with ${this.currentMessages.length} messages...`);
 
                 let streamEnded = false;
                 let llmError: Error | null = null;
@@ -151,7 +162,7 @@ export class Agent {
                 const pendingToolPromises: Map<string, Promise<Message>> = new Map(); // Track ongoing tool calls
 
                 // 1. Process LLM Stream & Initiate Tool Calls
-                const stream = this.llmAdapter.createCompletion(currentMessages, availableTools);
+                const stream = this.llmAdapter.createCompletion(this.currentMessages, availableTools);
                 for await (const chunk of stream) {
                     yield chunk; // Yield raw chunk immediately
                     
@@ -188,7 +199,8 @@ export class Agent {
 
                 // 2. Add Accumulated Messages to History
                 // Includes thinking, final assistant, and the tool_use message (if any)
-                currentMessages.push(...accumulator.getCompletedMessages()); 
+                // Add to the internal message history
+                this.currentMessages.push(...accumulator.getCompletedMessages()); 
                 
                 // 3. Wait for Tools and Process Results (if any were started)
                 if (pendingToolPromises.size > 0) {
@@ -230,7 +242,8 @@ export class Agent {
                     }
 
                     // Add the completed tool results to the main message history 
-                    currentMessages.push(...toolResultMessages); 
+                    // Add to the internal message history
+                    this.currentMessages.push(...toolResultMessages); 
 
                     logger.info(`[Agent Turn ${turn}] Finished tool execution. Proceeding to next LLM call.`);
                     // Loop continues automatically

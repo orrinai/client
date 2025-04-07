@@ -126,11 +126,16 @@ export class OrrinAiClient {
       await this.databaseAdapter.createSession(sessionId);
       logger.info(`Database session created: ${sessionId}`);
 
-      // Create and connect the agent for this session
+      // Load existing messages for the session (will be empty for a new session)
+      const initialMessages = await this.databaseAdapter.getMessages(sessionId);
+      logger.info(`Loaded ${initialMessages.length} initial messages for session ${sessionId}.`);
+
+      // Create and connect the agent for this session, passing initial messages
       logger.info(`Initializing Agent for session ${sessionId}...`);
       const agent = new Agent({ 
           llmAdapter: this.llmAdapter, 
-          mcpServerUrls: this.mcpServerUrls
+          mcpServerUrls: this.mcpServerUrls,
+          initialMessages, // Pass loaded history
       });
 
       try {
@@ -224,28 +229,24 @@ export class OrrinAiClient {
     }
 
     try {
-      // 1. Get History
-      const history = await this.databaseAdapter.getMessages(sessionId);
-      logger.info(`Loaded ${history.length} messages for session ${sessionId}.`);
-
-      // 2. Prepare User Message
+      // 1. Prepare User Message
       const userMessage: Message = {
           role: 'user',
           content: userMessageContent,
           createdAt: new Date(),
       };
 
-      // 3. Save User Message
+      // 2. Save User Message (before processing)
       await this.databaseAdapter.addMessage(sessionId, userMessage);
       logger.info(`User message saved for session ${sessionId}.`);
-      history.push(userMessage);
 
       // Instantiate the accumulator for this run
       const accumulator = new MessageAccumulator();
 
-      // 4. Run the existing Agent and process yielded items
-      logger.info(`Starting agent run for session ${sessionId}...`);
-      for await (const yieldedItem of agent.run(history)) {
+      // 3. Process the new message using the agent and process yielded items
+      logger.info(`Starting agent processing for session ${sessionId}...`);
+      // Pass ONLY the new user message to the agent
+      for await (const yieldedItem of agent.run(userMessage)) {
           // Yield the chunk or message immediately to the caller
           yield yieldedItem;
 
@@ -256,7 +257,7 @@ export class OrrinAiClient {
               completedMessage = accumulator.addChunk(yieldedItem);
           }
 
-          // 5. Save messages completed by the accumulator OR yielded directly by Agent
+          // 4. Save messages completed by the accumulator OR yielded directly by Agent
           if (completedMessage) {
               // Message completed by the accumulator (e.g., thinking, final assistant)
               logger.info(`Saving message (from accumulator) with role ${completedMessage.role} to DB for session ${sessionId}.`);
@@ -272,7 +273,7 @@ export class OrrinAiClient {
           // handles finalizing it based on stream_end. We also don't save partial assistant
           // messages; only the final one determined by the accumulator on stream_end.
       }
-      logger.info(`Agent run finished for session ${sessionId}.`);
+      logger.info(`Agent processing finished for session ${sessionId}.`);
 
     } catch (error) {
       logger.error(`Error during agent processing for session ${sessionId}:`, error);

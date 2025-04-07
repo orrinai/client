@@ -51,10 +51,12 @@ export class Logger {
         
         // Simple handling for additional params
         const paramsStr = optionalParams.map(p => 
-            typeof p === 'object' ? JSON.stringify(p, null, 2) : String(p)
-        ).join(' ');
+            p instanceof Error ? `\n${p.stack || p.toString()}` // Handle Error objects explicitly
+            : (typeof p === 'object' && p !== null) ? JSON.stringify(p, null, 2) // Keep original object handling (ensure not null)
+            : String(p) // Handle primitives
+        ).join('\n'); // Use newline as separator for potentially multi-line stacks
 
-        return paramsStr ? `${mainMessage} ${paramsStr}` : mainMessage;
+        return paramsStr ? `${mainMessage}\n${paramsStr}` : mainMessage; // Add newline before params
     }
 
     public error(message: string, ...optionalParams: any[]): void {
