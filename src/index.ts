@@ -27,7 +27,7 @@ export interface Message {
   content: string | null;
   // Optional structured data fields
   tool_calls?: LLMToolCallRequest[]; // Primarily for 'tool_use' role
-  tool_result?: LLMToolResult; // Primarily for 'tool_result' role
+  tool_results?: LLMToolResult[]; // For multi-tool 'tool_result' role
   // Optional metadata (can be derived from structured fields if needed)
   createdAt?: Date;
 }

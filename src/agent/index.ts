@@ -86,11 +86,11 @@ export class Agent {
     }
 
     /**
-     * Executes a single tool call and returns the resulting tool_result message.
+     * Executes a single tool call and returns the resulting tool_result object.
      * @param toolCall The tool call request.
-     * @returns A Promise resolving to the tool_result Message.
+     * @returns A Promise resolving to the LLMToolResult object.
      */
-    private async _executeToolCall(toolCall: LLMToolCallRequest): Promise<Message> {
+    private async _executeToolCall(toolCall: LLMToolCallRequest): Promise<LLMToolResult> {
         logger.info(`[Agent Run] Executing tool: ${toolCall.name} (ID: ${toolCall.id})`, toolCall.input);
         let toolResultData: string | Record<string, any>;
         let toolResultIsError = false;
@@ -117,13 +117,7 @@ export class Agent {
             toolResultIsError = true;
         }
         const toolResult: LLMToolResult = { tool_call_id: toolCall.id, content: toolResultData, is_error: toolResultIsError };
-        const toolResultMessage: Message = {
-            role: 'tool_result',
-            content: typeof toolResultData === 'string' ? toolResultData : JSON.stringify(toolResultData),
-            tool_result: toolResult,
-            createdAt: new Date()
-        };
-        return toolResultMessage;
+        return toolResult;
     }
 
     /**
@@ -159,7 +153,7 @@ export class Agent {
                 let streamEnded = false;
                 let llmError: Error | null = null;
                 const accumulator = new MessageAccumulator();
-                const pendingToolPromises: Map<string, Promise<Message>> = new Map(); // Track ongoing tool calls
+                const pendingToolPromises: Map<string, Promise<LLMToolResult>> = new Map(); // Track ongoing tool calls
 
                 // 1. Process LLM Stream & Initiate Tool Calls
                 const stream = this.llmAdapter.createCompletion(this.currentMessages, availableTools);
@@ -197,56 +191,90 @@ export class Agent {
                 if (llmError) throw llmError;
                 if (!streamEnded) throw new Error("LLM stream ended unexpectedly.");
 
-                // 2. Add Accumulated Messages to History
-                // Includes thinking, final assistant, and the tool_use message (if any)
-                // Add to the internal message history
-                this.currentMessages.push(...accumulator.getCompletedMessages()); 
-                
-                // 3. Wait for Tools and Process Results (if any were started)
-                if (pendingToolPromises.size > 0) {
-                    logger.info(`[Agent Turn ${turn}] Waiting for ${pendingToolPromises.size} pending tool call(s) to complete...`);
-                    const settledResults = await Promise.allSettled(pendingToolPromises.values());
-                    
-                    const toolResultMessages: Message[] = [];
-                    const fulfilledToolMessages: Message[] = [];
+                // 2. Add Accumulated Messages (thinking, assistant, tool_use) to History
+                const accumulatedMessages = accumulator.getCompletedMessages();
+                this.currentMessages.push(...accumulatedMessages);
+                logger.info(`[Agent Turn ${turn}] Added ${accumulatedMessages.length} messages from accumulator to history.`);
 
-                    settledResults.forEach((result, index) => {
-                         // Find original tool call ID (requires knowing the order or storing IDs alongside promises)
-                         // Let's assume order is preserved for simplicity, but a Map iteration might be safer
-                         const toolCallId = Array.from(pendingToolPromises.keys())[index]; 
-                         if (result.status === 'fulfilled') {
-                             const toolResultMessage = result.value; // This is the Message object
-                             fulfilledToolMessages.push(toolResultMessage);
-                             toolResultMessages.push(toolResultMessage);
-                             logger.info(`[Agent Turn ${turn}] Tool call ${toolCallId} completed successfully.`);
-                         } else {
-                             logger.error(`[Agent Run] Tool call ${toolCallId} execution failed:`, result.reason);
-                             // Create an error message to yield and add to history
-                             const errorResult: LLMToolResult = { tool_call_id: toolCallId, content: `Tool execution failed: ${result.reason}`, is_error: true };
-                             const errorMessage: Message = {
-                                 role: 'tool_result',
-                                 content: typeof errorResult.content === 'string' 
-                                             ? errorResult.content 
-                                             : JSON.stringify(errorResult.content),
-                                 tool_result: errorResult,
-                                 createdAt: new Date()
-                             };
-                              fulfilledToolMessages.push(errorMessage); // Yield the error representation
-                              toolResultMessages.push(errorMessage); // Add error representation to history
-                         }
-                    });
-                    
-                    // Yield the collected tool_result messages (success or error)
-                    for (const toolMessage of fulfilledToolMessages) {
-                         yield toolMessage; 
+                // 3. Process Tool Results Sequentially Based on Tool Use Messages
+                const generatedToolResultMessages: Message[] = [];
+                let processedAnyTools = false;
+
+                // Iterate through only the messages accumulated in *this* turn
+                for (const toolUseMessage of accumulatedMessages) {
+                    // Skip messages that are not tool_use messages
+                    if (toolUseMessage.role !== 'tool_use') {
+                        continue;
+                    }
+                    // We now know it's a tool_use message, check if it actually has calls
+                    if (!toolUseMessage.tool_calls || toolUseMessage.tool_calls.length === 0) {
+                        // Log a warning if a tool_use message somehow has no calls
+                        logger.warn(`[Agent Turn ${turn}] Encountered tool_use message with no tool_calls array or empty array.`);
+                        continue;
                     }
 
-                    // Add the completed tool results to the main message history 
-                    // Add to the internal message history
-                    this.currentMessages.push(...toolResultMessages); 
+                    processedAnyTools = true; // Mark that we found at least one tool_use message
+                    const currentToolResults: LLMToolResult[] = [];
+                    const toolCallIds = toolUseMessage.tool_calls.map(tc => tc.id);
+                    logger.info(`[Agent Turn ${turn}] Processing results for tool_use message containing calls: ${toolCallIds.join(', ')}`);
 
-                    logger.info(`[Agent Turn ${turn}] Finished tool execution. Proceeding to next LLM call.`);
-                    // Loop continues automatically
+                    for (const toolCall of toolUseMessage.tool_calls) {
+                        const toolCallId = toolCall.id;
+                        const toolPromise = pendingToolPromises.get(toolCallId);
+                        pendingToolPromises.delete(toolCallId); // Remove processed promise
+
+                        if (!toolPromise) {
+                             logger.error(`[Agent Turn ${turn}] Logic Error: No pending promise found for tool call ID: ${toolCallId}`);
+                             // Create an error result
+                             const errorResult: LLMToolResult = { tool_call_id: toolCallId, content: `Internal error: Tool execution promise not found.`, is_error: true };
+                             currentToolResults.push(errorResult);
+                             continue;
+                        }
+
+                        try {
+                            const result = await toolPromise;
+                            currentToolResults.push(result);
+                            logger.info(`[Agent Turn ${turn}] Successfully awaited result for tool call ID: ${toolCallId}`);
+                        } catch (error) {
+                            logger.error(`[Agent Turn ${turn}] Error awaiting tool call ${toolCallId}:`, error);
+                            const errorResult: LLMToolResult = { tool_call_id: toolCallId, content: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`, is_error: true };
+                            currentToolResults.push(errorResult);
+                        }
+                    }
+
+                    // Construct the single tool_result message for this batch
+                    const toolResultMessage: Message = {
+                        role: 'tool_result',
+                        // Use 'tool_results' (plural) which expects an array
+                        tool_results: currentToolResults,
+                        // Content might be null or derived if needed by specific APIs
+                        content: null, // Or e.g., JSON.stringify(currentToolResults.map(r => r.content))
+                        createdAt: new Date()
+                    };
+
+                    yield toolResultMessage; // Yield the combined result message
+                    generatedToolResultMessages.push(toolResultMessage); // Add to list for history update
+                    logger.info(`[Agent Turn ${turn}] Yielded combined tool_result message for calls: ${toolCallIds.join(', ')}`);
+                } // End for loop over accumulatedMessages
+
+                // 4. Add Generated Tool Result Messages to History
+                if (generatedToolResultMessages.length > 0) {
+                    this.currentMessages.push(...generatedToolResultMessages);
+                    logger.info(`[Agent Turn ${turn}] Added ${generatedToolResultMessages.length} generated tool_result messages to history.`);
+                }
+
+                // Check for any remaining pending promises (shouldn't happen in this logic)
+                if (pendingToolPromises.size > 0) {
+                     logger.error(`[Agent Turn ${turn}] Logic Error: ${pendingToolPromises.size} tool promises remained pending after processing.`);
+                     // Decide how to handle this - maybe create error results for them?
+                     // For now, just log.
+                }
+
+
+                // 5. Decide whether to continue
+                if (processedAnyTools) {
+                     logger.info(`[Agent Turn ${turn}] Finished tool execution. Proceeding to next LLM call.`);
+                     // Loop continues automatically
                 } else {
                     // --- No Tools Called Path --- 
                     logger.info(`[Agent Turn ${turn}] No tools were executed. Ending run.`);

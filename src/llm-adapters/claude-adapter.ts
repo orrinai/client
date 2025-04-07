@@ -160,14 +160,14 @@ export class ClaudeAdapter implements LLMAdapter {
                       // Add the tool result as a NEW user message
                       formattedMessages.push({
                           role: 'user',
-                          content: [{
+                          content: msg.tool_results.map(result => ({
                               type: 'tool_result',
-                              tool_use_id: msg.tool_result!.tool_call_id, // Assert non-null
-                              content: typeof msg.tool_result!.content === 'string'
-                                          ? msg.tool_result!.content
-                                          : JSON.stringify(msg.tool_result!.content),
-                              is_error: msg.tool_result!.is_error
-                          }]
+                              tool_use_id: result.tool_call_id, // Assert non-null
+                              content: typeof result.content === 'string'
+                                          ? result.content
+                                          : JSON.stringify(result.content),
+                              is_error: result.is_error
+                          }))
                       });
                   } else {
                       logger.error(`[ClaudeAdapter] Tool result message does not immediately follow an assistant message requesting tools in the formatted list. Skipping tool result.`);

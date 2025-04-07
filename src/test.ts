@@ -155,7 +155,7 @@ async function main() {
                     } else if ('role' in item) { // It's a Message
                          const message = item;
                          // Agent now only yields tool_result messages
-                         if (message.role === 'tool_result' && message.tool_result) {
+                         if (message.role === 'tool_result' && message.tool_results) {
                              // If text or thinking was streaming, end its line
                              if (inTextStream || inThinkingStream) {
                                 process.stdout.write('\n');
@@ -163,10 +163,15 @@ async function main() {
                                 inThinkingStream = false;
                                 firstTextChunk = true;
                             }
-                             const toolName = toolIdToNameMap.get(message.tool_result.tool_call_id) ?? message.tool_result.tool_call_id;
-                             const status = message.tool_result.is_error ? '(Error)' : '';
-                             // Use the message content which should now hold the result string
-                             console.log(`Tool call ${toolName} done`);
+                            for (const result of message.tool_results) {
+                                const toolName = toolIdToNameMap.get(result.tool_call_id) ?? result.tool_call_id;
+                                const status = result.is_error ? '(Error)' : '';
+                                if (result.is_error) {
+                                    console.error(`Tool call ${toolName} failed`);
+                                } else {
+                                    console.log(`Tool call ${toolName} done`);
+                                }
+                            }
                          }
                     }
                 }
