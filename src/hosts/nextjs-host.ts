@@ -57,7 +57,7 @@ function NextOrrinAi(options: ReturnType<typeof NextOrrinAiOptions>) {
                     // Iterate through each chunk
                     for await (const chunk of messageGenerator) {
                         // Determine event type and create payload
-                        let eventType: string;
+                        let eventType = "unknown";
                         let payload: any;
                         
                         if ('role' in chunk && chunk.role === 'tool_result') {
@@ -86,7 +86,8 @@ function NextOrrinAi(options: ReturnType<typeof NextOrrinAiOptions>) {
                     controller.close();
                 } catch (error) {
                     logger.error(`[NextOrrinAi] Error processing message stream:`, error);
-                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`));
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`));
                     controller.close();
                 } finally {
                     options.closeSession(sessionId);

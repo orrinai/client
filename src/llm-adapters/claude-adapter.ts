@@ -465,11 +465,7 @@ export class ClaudeAdapter implements LLMAdapter {
                         break;
 
                     case 'message_stop':
-                        // Note: Anthropic SDK combines usage from message_delta into this event's usage
-                        const usage = event['anthropic-message-api-response']?.usage; // Corrected access
-                        const finalMessage = event['anthropic-message-api-response']?.message; // Might be absent
-                        const stopReason = finalMessage?.stop_reason ?? null; // Simplified access
-                        logger.info(`[ClaudeAdapter] Stream finished. Stop reason: ${stopReason}`, usage);
+                        logger.info(`[ClaudeAdapter] Stream finished`);
 
                         // Final cleanup: Process any remaining buffer and yield final end state
                         // (Safeguard in case content_block_stop didn't fire or buffer remained)
@@ -498,7 +494,7 @@ export class ClaudeAdapter implements LLMAdapter {
                         activeToolCallId = null;
 
                         // Yield stream_end
-                        yield { type: 'stream_end', reason: stopReason, usage: usage };
+                        yield { type: 'stream_end' };
                         break;
 
                      // Removed 'error' case here; handled by outer try/catch

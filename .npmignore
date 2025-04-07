@@ -1,0 +1,35 @@
+# Source
+src/
+
+# TypeScript config
+tsconfig.json
+
+# Development
+node_modules/
+.git/
+.github/
+.vscode/
+.DS_Store
+
+# Documentation
+docs/
+examples/
+README.md
+
+# Tests
+**/*.test.ts
+**/*.spec.ts
+test/
+coverage/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Build artifacts
+.npm
+.eslintcache 

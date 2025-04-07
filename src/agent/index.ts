@@ -102,7 +102,7 @@ export class Agent {
             logger.info(`[Agent Run] Tool ${toolCall.name} (ID: ${toolCall.id}) executed.`);
             if (result.content && result.content.length > 0) {
                 const firstPart = result.content[0];
-                toolResultData = ('text' in firstPart) ? firstPart.text : JSON.stringify(firstPart);
+                toolResultData = JSON.stringify(firstPart);
             } else {
                 toolResultData = '[No content returned by tool]';
                 logger.warn(`[Agent Run] Tool ${toolCall.name} (ID: ${toolCall.id}) returned no content.`);
@@ -179,7 +179,7 @@ export class Agent {
 
                     if (chunk.type === 'stream_end') {
                         streamEnded = true;
-                        logger.info(`[Agent Turn ${turn}] Stream ended cleanly. Reason: ${chunk.reason}`);
+                        logger.info(`[Agent Turn ${turn}] Stream ended cleanly`);
                     } else if (chunk.type === 'error') {
                         llmError = chunk.error;
                         streamEnded = true;

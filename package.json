@@ -1,15 +1,26 @@
 {
-  "name": "orrinai-client",
+  "name": "@orrin-ai/client",
   "version": "0.1.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "description": "MCP agent with session management and SSE streaming support",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
     "build": "tsc",
     "start": "node ./dist/index.js",
     "dev": "node --loader ts-node/esm examples/cli.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "ai",
+    "session",
+    "streaming",
+    "sse",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.14.0",
     "ts-node": "^10.9.2"

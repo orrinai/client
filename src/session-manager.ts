@@ -24,7 +24,7 @@ export interface LLMToolResult {
 
 export interface ToolResultMessage {
   role: 'tool_result';
-  tool_results?: LLMToolResult[]; // For multi-tool 'tool_result' role
+  tool_results: LLMToolResult[]; // For multi-tool 'tool_result' role
   content: null;
   createdAt?: Date;
 }
@@ -47,7 +47,7 @@ export type Message = BaseMessage | ToolResultMessage;
 export type LLMCompletionChunk = 
     // Stream Lifecycle
     | { type: 'stream_start' } 
-    | { type: 'stream_end'; reason: string | null; usage?: { output_tokens: number } } 
+    | { type: 'stream_end' } 
     // Text Block Events
     | { type: 'text_start' } 
     | { type: 'text_delta'; delta: string } 
