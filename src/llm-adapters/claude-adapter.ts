@@ -7,7 +7,7 @@ import type {
     Message, 
     LLMTool, 
     LLMCompletionChunk
-} from '../index.js';
+} from '../session-manager.js';
 // Update import path for logger
 import { logger } from "../utils/logger.js";
 

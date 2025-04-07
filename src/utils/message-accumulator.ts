@@ -1,4 +1,4 @@
-import type { LLMCompletionChunk, Message, LLMToolCallRequest, LLMToolResult } from '../index.js';
+import type { LLMCompletionChunk, Message, LLMToolCallRequest, LLMToolResult } from '../session-manager.js';
 import { logger } from './logger.js';
 
 // Helper type for accumulating tool call data locally

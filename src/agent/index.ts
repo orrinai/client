@@ -1,4 +1,4 @@
-import type { LLMAdapter, LLMTool, Message, LLMToolCallRequest, LLMToolResult, LLMCompletionChunk } from '../index.js'; // Removed LLMAdapterResponse
+import type { LLMAdapter, LLMTool, Message, LLMToolCallRequest, LLMToolResult, LLMCompletionChunk } from '../session-manager.js'; // Removed LLMAdapterResponse
 import { MCPRouter } from './mcp-router.js'; // Import MCPRouter
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'; // Needed to create transports
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';

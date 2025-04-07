@@ -1,9 +1,9 @@
 import readline from 'readline/promises';
-import { OrrinAiClient } from './index.js'; // Adjust path if needed, added .js extension
-import type { LLMAdapter, DatabaseAdapter, Message, LLMTool, LLMCompletionChunk } from './index.js'; // Import interfaces, added .js extension
+import { OrrinAiClient } from './session-manager.js'; // Adjust path if needed, added .js extension
+import type { LLMAdapter, DatabaseAdapter, Message, LLMTool, LLMCompletionChunk } from './session-manager.js'; // Import interfaces, added .js extension
 // Import the real ClaudeAdapter
 import { ClaudeAdapter } from './llm-adapters/claude-adapter.js';
-import { InMemoryDatabaseAdapter } from './in-memory-database-adapter.js';
+import { InMemoryDatabaseAdapter } from './database-adapters/in-memory-database-adapter.js';
 import { logger, LogLevel } from './utils/logger.js'; // Import logger and LogLevel
 // Import the accumulator
 import { MessageAccumulator } from './utils/message-accumulator.js'; 

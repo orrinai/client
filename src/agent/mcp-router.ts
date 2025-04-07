@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { Client as MCPClient } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'; // Import Transport type
 import type { CallToolRequest, CallToolResult, ListToolsResult, ServerCapabilities, Implementation } from '@modelcontextprotocol/sdk/types.js'; // Import necessary types
-import type { LLMTool } from '../index.js'; // Adjusted import path
+import type { LLMTool } from '../session-manager.js'; // Adjusted import path
 import { logger } from '../utils/logger.js'; // Import logger
 
 interface MCPRouterConfig {

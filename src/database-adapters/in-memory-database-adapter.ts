@@ -1,5 +1,5 @@
-import type { DatabaseAdapter, Message } from "./index.js"; // Assuming index.js is in the same directory
-import { logger } from "./utils/logger.js"; // Import logger
+import type { DatabaseAdapter, Message } from "../session-manager.js"; // Assuming index.js is in the same directory
+import { logger } from "../utils/logger.js"; // Import logger
 
 /**
  * A simple in-memory database adapter for storing session messages.
