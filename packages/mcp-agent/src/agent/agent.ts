@@ -1,4 +1,4 @@
-import type { LLMAdapter, LLMTool, Message, LLMToolCallRequest, LLMToolResult, LLMCompletionChunk, ToolResultMessage } from '../session-manager.js'; // Removed LLMAdapterResponse
+import type { LLMAdapter, LLMTool, Message, LLMToolCallRequest, LLMToolResult, LLMCompletionChunk, ToolResultMessage } from '../types.js'; // Removed LLMAdapterResponse
 import { MCPRouter } from './mcp-router.js'; // Import MCPRouter
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'; // Needed to create transports
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
@@ -215,7 +215,7 @@ export class Agent {
 
                     processedAnyTools = true; // Mark that we found at least one tool_use message
                     const currentToolResults: LLMToolResult[] = [];
-                    const toolCallIds = toolUseMessage.tool_calls.map(tc => tc.id);
+                    const toolCallIds = toolUseMessage.tool_calls.map((tc: LLMToolCallRequest) => tc.id);
                     logger.info(`[Agent Turn ${turn}] Processing results for tool_use message containing calls: ${toolCallIds.join(', ')}`);
 
                     for (const toolCall of toolUseMessage.tool_calls) {

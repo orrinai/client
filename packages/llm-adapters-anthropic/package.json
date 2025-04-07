@@ -1,0 +1,32 @@
+{
+  "name": "@orrin-ai/llm-adapters-anthropic",
+  "version": "0.1.1",
+  "description": "Anthropic LLM adapter for MCP agent",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "anthropic",
+    "llm",
+    "mcp",
+    "agent"
+  ],
+  "author": "Orrin AI",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@orrin-ai/mcp-agent": "^0.1.1"
+  }
+}

@@ -1,11 +1,8 @@
 import readline from 'readline/promises';
-import { OrrinAiClient } from '../src/session-manager.js'; // Adjust path if needed, added .js extension
 // Import the real ClaudeAdapter
-import { ClaudeAdapter } from '../src/llm-adapters/claude-adapter.js';
-import { SQLiteDatabaseAdapter } from '../src/database-adapters/sqlite-database-adapter.js';
-import { logger, LogLevel } from '../src/utils/logger.js'; // Import logger and LogLevel
-// Import the accumulator
-import { MessageAccumulator } from '../src/utils/message-accumulator.js'; 
+import { ClaudeAdapter } from '@orrin-ai/llm-adapters-anthropic';
+import { SQLiteDatabaseAdapter } from '@orrin-ai/database-adapter-sqlite';
+import { MessageAccumulator, logger, LogLevel, OrrinAiClient } from '@orrin-ai/mcp-agent'; 
 
 // --- Main Test Script Logic ---
 

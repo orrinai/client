@@ -1,0 +1,33 @@
+{
+  "name": "@orrin-ai/database-adapter-in-memory",
+  "version": "0.1.0",
+  "description": "In-memory database adapter for MCP agent",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "in-memory",
+    "database",
+    "mcp",
+    "agent"
+  ],
+  "author": "Orrin AI",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@orrin-ai/database-adapter-sqlite": "^0.1.0",
+    "@orrin-ai/llm-adapters-anthropic": "^0.1.1",
+    "@orrin-ai/mcp-agent": "^0.1.2"
+  }
+}

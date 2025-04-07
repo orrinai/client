@@ -1,0 +1,31 @@
+{
+  "name": "@orrin-ai/database-adapter-in-sqlite",
+  "version": "0.1.0",
+  "description": "SQLite database adapter for MCP agent",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "in-memory",
+    "database",
+    "mcp",
+    "agent"
+  ],
+  "author": "Orrin AI",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@orrin-ai/mcp-agent": "^0.1.1"
+  }
+}

@@ -7,9 +7,9 @@ import type {
     Message, 
     LLMTool, 
     LLMCompletionChunk
-} from '../session-manager.js';
+} from '@orrin-ai/mcp-agent';
 // Update import path for logger
-import { logger } from "../utils/logger.js";
+import { logger } from "@orrin-ai/mcp-agent";
 
 // Define the specific structure Anthropic expects for the tool's input schema
 // It must have type: "object" and allow arbitrary other properties (index signature)

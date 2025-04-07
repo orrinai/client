@@ -1,6 +1,5 @@
-import type { DatabaseAdapter, Message } from "../session-manager.js"; // Assuming index.js is in the same directory
-import { logger } from "../utils/logger.js"; // Import logger
-
+import type { DatabaseAdapter, Message } from "@orrin-ai/mcp-agent"; // Assuming index.js is in the same directory
+import { logger } from "@orrin-ai/mcp-agent"; // Import logger
 /**
  * A simple in-memory database adapter for storing session messages.
  * Useful for testing or simple deployments without a persistent database.
