@@ -1,9 +1,8 @@
 import readline from 'readline/promises';
 import { OrrinAiClient } from '../src/session-manager.js'; // Adjust path if needed, added .js extension
-import type { LLMAdapter, DatabaseAdapter, Message, LLMTool, LLMCompletionChunk } from '../src/session-manager.js'; // Import interfaces, added .js extension
 // Import the real ClaudeAdapter
 import { ClaudeAdapter } from '../src/llm-adapters/claude-adapter.js';
-import { InMemoryDatabaseAdapter } from '../src/database-adapters/in-memory-database-adapter.js';
+import { SQLiteDatabaseAdapter } from '../src/database-adapters/sqlite-database-adapter.js';
 import { logger, LogLevel } from '../src/utils/logger.js'; // Import logger and LogLevel
 // Import the accumulator
 import { MessageAccumulator } from '../src/utils/message-accumulator.js'; 
@@ -19,7 +18,7 @@ async function main() {
         output: process.stdout,
     });
 
-    const dbAdapter = new InMemoryDatabaseAdapter();
+    const dbAdapter = new SQLiteDatabaseAdapter();
 
     const mcpServers = ["http://localhost:3000/sse"]
 
