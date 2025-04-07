@@ -1,4 +1,4 @@
-import type { LLMAdapter, LLMTool, Message, LLMToolCallRequest, LLMToolResult, LLMCompletionChunk } from '../session-manager.js'; // Removed LLMAdapterResponse
+import type { LLMAdapter, LLMTool, Message, LLMToolCallRequest, LLMToolResult, LLMCompletionChunk, ToolResultMessage } from '../session-manager.js'; // Removed LLMAdapterResponse
 import { MCPRouter } from './mcp-router.js'; // Import MCPRouter
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'; // Needed to create transports
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
@@ -6,7 +6,7 @@ import { URL } from 'url';
 import { logger } from '../utils/logger.js'; // Import logger
 import { MessageAccumulator } from '../utils/message-accumulator.js'; // Import the accumulator
 
-interface AgentConfig {
+export interface AgentConfig {
     llmAdapter: LLMAdapter;
     // Changed from mcpRouter to mcpServerUrls
     mcpServerUrls: string[];
@@ -127,7 +127,7 @@ export class Agent {
      * and yields completed Message objects only for tool results (role: 'tool_result').
      * @param initialMessages The starting message history for this run.
      */
-    async *run(newMessage: Message): AsyncGenerator<LLMCompletionChunk | Message, void, undefined> {
+    async *run(newMessage: Message): AsyncGenerator<LLMCompletionChunk | ToolResultMessage, void, undefined> {
         // Add the new message to the internal history
         this.currentMessages.push(newMessage);
         // Let currentMessages refer to the instance variable

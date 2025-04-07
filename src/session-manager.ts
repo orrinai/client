@@ -21,16 +21,25 @@ export interface LLMToolResult {
     is_error?: boolean; // Indicate if the tool execution resulted in an error
 }
 
+
+export interface ToolResultMessage {
+  role: 'tool_result';
+  tool_results?: LLMToolResult[]; // For multi-tool 'tool_result' role
+  content: null;
+  createdAt?: Date;
+}
+
 // Define a standard Message interface
-export interface Message {
-  role: 'user' | 'assistant' | 'assistant_thinking' | 'tool_use' | 'tool_result';
+export interface BaseMessage {
+  role: 'user' | 'assistant' | 'assistant_thinking' | 'tool_use';
   content: string | null;
   // Optional structured data fields
   tool_calls?: LLMToolCallRequest[]; // Primarily for 'tool_use' role
-  tool_results?: LLMToolResult[]; // For multi-tool 'tool_result' role
   // Optional metadata (can be derived from structured fields if needed)
   createdAt?: Date;
 }
+
+export type Message = BaseMessage | ToolResultMessage;
 
 // --- LLM Interaction Structures ---
 
@@ -69,13 +78,41 @@ export interface LLMAdapter {
 }
 
 export interface DatabaseAdapter {
+  /**
+   * Creates a new session in the database with the given ID.
+   * Should initialize any necessary data structures for the session.
+   * @param sessionId - The ID of the session to create
+   * @throws Error if the session already exists or cannot be created
+   */
   createSession(sessionId: string): Promise<void>;
-  addMessage(sessionId: string, message: Message): Promise<void>; // Message type still uses string content
+  
+  /**
+   * Retrieves session data for the given ID, or null if not found.
+   * Used to check if a session exists before opening it.
+   * @param sessionId - The ID of the session to retrieve
+   * @returns Session data object or null if not found
+   */
+  getSession(sessionId: string): Promise<{id: string} | null>;
+  
+  /**
+   * Adds a message to an existing session.
+   * @param sessionId - The ID of the session to add the message to
+   * @param message - The message to add
+   * @throws Error if the session does not exist or the message cannot be added
+   */
+  addMessage(sessionId: string, message: Message): Promise<void>;
+  
+  /**
+   * Retrieves all messages for a session in chronological order.
+   * @param sessionId - The ID of the session to retrieve messages for
+   * @returns Array of messages for the session
+   * @throws Error if the session does not exist
+   */
   getMessages(sessionId: string): Promise<Message[]>;
 }
 
 // Configuration interface for the client
-interface OrrinAiClientConfig {
+export interface OrrinAiClientConfig {
   llmAdapter: LLMAdapter;
   databaseAdapter: DatabaseAdapter;
   mcpServerUrls?: string[]; // Use URLs for config, convert to Transports internally
@@ -114,19 +151,49 @@ export class OrrinAiClient {
   }
 
   /**
-   * Creates a new session, initializes an associated Agent instance,
-   * connects the Agent's resources, and stores it.
+   * Creates a new session in the database only, without initializing an Agent.
+   * Use openSession() after this to initialize and connect the Agent.
    * @returns The newly generated session ID.
    */
   async createSession(): Promise<string> {
     const sessionId = randomUUID();
-    logger.info(`Attempting to create session: ${sessionId}`); // Log attempt
+    logger.info(`Attempting to create session in database: ${sessionId}`);
+    
     try {
-      // Create session entry in DB first
+      // Create session entry in DB
       await this.databaseAdapter.createSession(sessionId);
       logger.info(`Database session created: ${sessionId}`);
+      return sessionId;
+    } catch (error) {
+      logger.error(`Failed to create session ${sessionId} in database:`, error);
+      throw error;
+    }
+  }
 
-      // Load existing messages for the session (will be empty for a new session)
+  /**
+   * Opens an existing session by initializing an Agent instance,
+   * connecting the Agent's resources, and storing it.
+   * @param sessionId - The ID of the session to open
+   * @throws Error if the session does not exist or initialization fails
+   */
+  async openSession(sessionId: string): Promise<void> {
+    logger.info(`Attempting to open session: ${sessionId}`);
+    
+    try {
+      // Check if session exists
+      const session = await this.databaseAdapter.getSession(sessionId);
+      if (!session) {
+        logger.error(`Session ${sessionId} not found.`);
+        throw new Error(`Session ${sessionId} not found. Create the session first.`);
+      }
+      
+      // If agent is already initialized, close it first
+      if (this.sessionAgents.has(sessionId)) {
+        logger.info(`Session ${sessionId} already open, closing existing agent first.`);
+        await this.closeSession(sessionId);
+      }
+
+      // Load existing messages for the session
       const initialMessages = await this.databaseAdapter.getMessages(sessionId);
       logger.info(`Loaded ${initialMessages.length} initial messages for session ${sessionId}.`);
 
@@ -144,30 +211,40 @@ export class OrrinAiClient {
       } catch (connectError) {
           // Log connection error but allow session creation to succeed
           logger.error(`Agent failed to connect for session ${sessionId}:`, connectError);
-          // Depending on requirements, could throw here to fail session creation
+          // Depending on requirements, could throw here to fail session opening
       }
       
-      // Store the agent instance (even if connection failed, it might recover or work without tools)
+      // Store the agent instance
       this.sessionAgents.set(sessionId, agent);
       logger.info(`Agent stored for session ${sessionId}.`);
 
-      return sessionId;
-
     } catch (error) {
-      logger.error(`Failed to create or initialize session ${sessionId}:`, error);
-      // Clean up agent if it was partially created before DB error etc.
+      logger.error(`Failed to open session ${sessionId}:`, error);
+      // Clean up agent if it was partially created
       const agent = this.sessionAgents.get(sessionId);
       if (agent) {
-          logger.info(`Cleaning up agent for failed session ${sessionId}...`); // Log cleanup
-          await agent.close(); // Attempt cleanup
+          logger.info(`Cleaning up agent for failed session opening ${sessionId}...`);
+          await agent.close();
           this.sessionAgents.delete(sessionId);
       }
-      // Rethrow the original error (could be DB error or agent connect error if we chose to throw)
-      if (error instanceof Error && error.message.includes('database')) {
-           throw error;
-      } else {
-          throw new Error(`Failed to initialize session ${sessionId}. Reason: ${error}`);
-      }
+      // Rethrow the error
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a new session and opens it in one operation.
+   * This maintains backward compatibility with the original function.
+   * @returns The newly generated session ID.
+   */
+  async createAndOpenSession(): Promise<string> {
+    const sessionId = await this.createSession();
+    try {
+      await this.openSession(sessionId);
+      return sessionId;
+    } catch (error) {
+      logger.error(`Failed to open newly created session ${sessionId}:`, error);
+      throw error;
     }
   }
 
@@ -219,13 +296,13 @@ export class OrrinAiClient {
    * @yields {Message | LLMCompletionChunk} Streamed chunks and composed messages.
    * @throws {Error} if the session ID is not found or has no associated agent.
    */
-  async *addUserMessage(sessionId: string, userMessageContent: string): AsyncGenerator<Message | LLMCompletionChunk, void, undefined> {
+  async *addUserMessage(sessionId: string, userMessageContent: string): AsyncGenerator<ToolResultMessage | LLMCompletionChunk, void, undefined> {
     logger.info(`Processing user message for session ${sessionId}`);
 
     const agent = this.sessionAgents.get(sessionId);
     if (!agent) {
         logger.error(`No active agent found for session ${sessionId}. Cannot process message.`);
-        throw new Error(`[OrrinAiClient] No active agent found for session ${sessionId}. Please create the session first.`);
+        throw new Error(`[OrrinAiClient] No active agent found for session ${sessionId}. Please open the session first.`);
     }
 
     try {

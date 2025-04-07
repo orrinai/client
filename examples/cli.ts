@@ -1,12 +1,12 @@
 import readline from 'readline/promises';
-import { OrrinAiClient } from './session-manager.js'; // Adjust path if needed, added .js extension
-import type { LLMAdapter, DatabaseAdapter, Message, LLMTool, LLMCompletionChunk } from './session-manager.js'; // Import interfaces, added .js extension
+import { OrrinAiClient } from '../src/session-manager.js'; // Adjust path if needed, added .js extension
+import type { LLMAdapter, DatabaseAdapter, Message, LLMTool, LLMCompletionChunk } from '../src/session-manager.js'; // Import interfaces, added .js extension
 // Import the real ClaudeAdapter
-import { ClaudeAdapter } from './llm-adapters/claude-adapter.js';
-import { InMemoryDatabaseAdapter } from './database-adapters/in-memory-database-adapter.js';
-import { logger, LogLevel } from './utils/logger.js'; // Import logger and LogLevel
+import { ClaudeAdapter } from '../src/llm-adapters/claude-adapter.js';
+import { InMemoryDatabaseAdapter } from '../src/database-adapters/in-memory-database-adapter.js';
+import { logger, LogLevel } from '../src/utils/logger.js'; // Import logger and LogLevel
 // Import the accumulator
-import { MessageAccumulator } from './utils/message-accumulator.js'; 
+import { MessageAccumulator } from '../src/utils/message-accumulator.js'; 
 
 // --- Main Test Script Logic ---
 
@@ -42,7 +42,7 @@ async function main() {
     let sessionId: string | null = null; // Keep track of session ID for cleanup
     try {
         logger.info("Creating initial session..."); // Use logger
-        sessionId = await client.createSession();
+        sessionId = await client.createAndOpenSession();
         logger.info(`Session created: ${sessionId}`); // Use logger
         console.log("Enter your messages below (type 'quit' or 'exit' to stop).");
         console.log("---");

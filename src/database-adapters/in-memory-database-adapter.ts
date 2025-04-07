@@ -23,6 +23,20 @@ export class InMemoryDatabaseAdapter implements DatabaseAdapter {
     }
 
     /**
+     * Retrieves session data for the given ID, or null if not found.
+     * @param sessionId - The ID of the session to retrieve
+     * @returns Session data object or null if not found
+     */
+    async getSession(sessionId: string): Promise<{id: string} | null> {
+        if (this.sessions.has(sessionId)) {
+            logger.info(`[MockDB] Session ${sessionId} found`);
+            return { id: sessionId };
+        }
+        logger.info(`[MockDB] Session ${sessionId} not found`);
+        return null;
+    }
+
+    /**
      * Adds a message to a specific session.
      * @param sessionId - The ID of the session.
      * @param message - The message object to add.
