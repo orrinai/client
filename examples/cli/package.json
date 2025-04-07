@@ -26,8 +26,8 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@orrin-ai/database-adapter-sqlite": "^0.1.0",
-    "@orrin-ai/llm-adapters-anthropic": "^0.1.1",
-    "@orrin-ai/mcp-agent": "^0.1.2"
+    "@orrin-ai/database-adapter-sqlite": "^0.1.1",
+    "@orrin-ai/llm-adapters-anthropic": "^0.1.2",
+    "@orrin-ai/mcp-agent": "^0.1.3"
   }
 }
