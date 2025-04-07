@@ -198,8 +198,6 @@ export class ClaudeAdapter implements LLMAdapter {
             
         } // End messages loop
 
-        // Final check (optional): Ensure messages alternate roles if needed
-        // ...
         return formattedMessages;
     }
 
@@ -304,33 +302,8 @@ export class ClaudeAdapter implements LLMAdapter {
                 } // End IDLE
 
                 case 'TEXT': {
-                    // Expecting more text or <thinking>
-                    const startIndex = currentTextBuffer.indexOf(thinkingStartTag);
-                    const ltIndex = currentTextBuffer.indexOf('<');
-
-                     if (startIndex !== -1) { // Found <thinking>
-                        const textBefore = currentTextBuffer.substring(0, startIndex);
-                        if (textBefore) yield { type: 'text_delta', delta: textBefore };
-                        yield { type: 'text_end' };
-                        yield { type: 'thinking_start' };
-                        parserState = 'THINKING'; // Update local state
-                        processedLength = startIndex + thinkingStartTag.length;
-                     } else if (ltIndex !== -1) { // Found '<'
-                        // Potentially incomplete <thinking> tag?
-                        if (!isFinalChunk && currentTextBuffer.length < ltIndex + thinkingStartTag.length) {
-                            // Yield text before '<' and wait
-                            const textBefore = currentTextBuffer.substring(0, ltIndex);
-                            if (textBefore) yield { type: 'text_delta', delta: textBefore };
-                            processedLength = ltIndex; // Don't process '<' yet
-                        } else { // Treat '<' as literal text
-                            const textToProcess = currentTextBuffer.substring(0, ltIndex + 1);
-                            yield { type: 'text_delta', delta: textToProcess };
-                            processedLength = ltIndex + 1;
-                        }
-                     } else { // No '<', all text
-                        yield { type: 'text_delta', delta: currentTextBuffer };
-                        processedLength = currentTextBuffer.length;
-                     }
+                    yield { type: 'text_delta', delta: currentTextBuffer };
+                    processedLength = currentTextBuffer.length;
                     break;
                 } // End TEXT
 
