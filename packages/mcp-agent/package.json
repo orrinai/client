@@ -1,6 +1,6 @@
 {
   "name": "@orrin-ai/mcp-agent",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "MCP agent with session management and SSE streaming support",
   "type": "module",
   "main": "dist/index.js",

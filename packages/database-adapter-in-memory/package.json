@@ -1,6 +1,6 @@
 {
   "name": "@orrin-ai/database-adapter-in-memory",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "In-memory database adapter for MCP agent",
   "type": "module",
   "main": "dist/index.js",
@@ -26,6 +26,6 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@orrin-ai/mcp-agent": "^0.1.1"
+    "@orrin-ai/mcp-agent": "^0.1.4"
   }
 }

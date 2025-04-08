@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Orrin AI Next.js Example
 
-## Getting Started
+A complete Next.js web application demonstrating the Orrin AI framework with streaming responses.
 
-First, run the development server:
+## Prerequisites
 
+- Node.js 18+ installed
+- An Anthropic API key (Claude access)
+
+## Setup
+
+1. Clone the repository (if you haven't already)
+
+2. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd examples/nextjs
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Create a `.env.local` file in the `examples/nextjs` directory with the following content:
+```
+ANTHROPIC_API_KEY=your_api_key_here
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Running the Example
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Start the development server:
+```bash
+npm run dev
+```
 
-## Learn More
+This will launch the Next.js application on [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Features Demonstrated
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This example showcases:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **API Routes Integration**: How to set up Next.js API routes with Orrin AI
+2. **Server-Sent Events**: Real-time streaming of AI responses
+3. **Session Management**: Creating and managing conversation sessions
+4. **UI Components**: A complete chat interface with message history
+5. **Thinking State Display**: Visual indicator when the AI is thinking
+6. **Tool Usage**: Demonstration of AI using tools when needed
 
-## Deploy on Vercel
+## Application Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/app`: Next.js application (App Router)
+  - `/api/mcpClient`: API route handlers for Orrin AI
+  - `/components`: UI components for the chat interface
+  - `/lib`: Utility functions and client-side helpers
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Key Files
+
+- `/app/api/mcpClient/message/route.ts`: Main API endpoint for handling messages
+- `/app/api/mcpClient/session/route.ts`: API endpoint for creating sessions
+- `/app/page.tsx`: Main chat interface
+
+## Implementation Details
+
+The example demonstrates:
+
+1. **Server Setup**:
+```typescript
+// app/api/mcpClient/message/route.ts
+import { NextOrrinAi, NextOrrinAiOptions } from "@orrin-ai/nextjs";
+import { ClaudeAdapter } from "@orrin-ai/llm-adapters-anthropic";
+import { SQLiteDatabaseAdapter } from "@orrin-ai/database-adapter-sqlite";
+
+const options = NextOrrinAiOptions({
+  llmAdapter: new ClaudeAdapter(),
+  databaseAdapter: new SQLiteDatabaseAdapter(),
+});
+
+const handler = NextOrrinAi(options);
+export { handler as POST };
+```
+
+2. **Client-Side Integration**:
+```typescript
+// Setting up SSE connection
+const eventSource = new EventSource(`/api/mcpClient/message?sessionId=${sessionId}`);
+
+// Handling different event types
+eventSource.addEventListener('text_delta', handleTextDelta);
+eventSource.addEventListener('thinking_delta', handleThinking);
+eventSource.addEventListener('tool_result', handleToolResult);
+```
+
+For a full understanding of the implementation, explore the source code in this directory.
